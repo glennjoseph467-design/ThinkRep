@@ -1,6 +1,19 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { quizzes } from '../data/quizzes';
+
+const ATTEMPTS_KEY = 'thinkrep_attempts';
+
+function getAttempts() {
+  return JSON.parse(localStorage.getItem(ATTEMPTS_KEY) || '[]');
+}
+
+function saveAttempt(attempt) {
+  const attempts = getAttempts();
+  attempts.unshift(attempt);
+  localStorage.setItem(ATTEMPTS_KEY, JSON.stringify(attempts));
+}
 
 const styles = {
   page: {
@@ -103,19 +116,12 @@ const optionKeys = ['a', 'b', 'c', 'd'];
 export default function Quiz() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { authFetch } = useAuth();
+  const { user } = useAuth();
 
-  const [quiz, setQuiz] = useState(null);
+  const quiz = quizzes.find(q => q.id === parseInt(id));
   const [current, setCurrent] = useState(0);
   const [answers, setAnswers] = useState({});
   const [results, setResults] = useState(null);
-  const [submitting, setSubmitting] = useState(false);
-
-  useEffect(() => {
-    authFetch(`/api/quizzes/${id}`)
-      .then(r => r.json())
-      .then(data => setQuiz(data.quiz));
-  }, [id]);
 
   if (!quiz) return null;
 
@@ -135,20 +141,31 @@ export default function Quiz() {
     }
   }
 
-  async function submit() {
-    setSubmitting(true);
-    const answerList = questions.map(question => ({
-      question_id: question.id,
-      selected_option: answers[question.id] || null,
-    }));
-    const res = await authFetch('/api/attempts', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ quiz_id: parseInt(id), answers: answerList }),
+  function submit() {
+    let score = 0;
+    const resultList = questions.map(question => {
+      const picked = answers[question.id] || null;
+      const isCorrect = picked === question.correct_option;
+      if (isCorrect) score++;
+      return {
+        question_id: question.id,
+        correct: isCorrect,
+        correct_option: question.correct_option,
+        explanation: question.explanation,
+      };
     });
-    const data = await res.json();
-    setResults(data);
-    setSubmitting(false);
+
+    saveAttempt({
+      id: Date.now(),
+      user_id: user.id,
+      quiz_id: quiz.id,
+      quiz_title: quiz.title,
+      score,
+      total_questions: questions.length,
+      completed_at: new Date().toISOString(),
+    });
+
+    setResults({ score, total: questions.length, results: resultList });
   }
 
   if (results) {
@@ -214,11 +231,11 @@ export default function Quiz() {
       </div>
       {isLast ? (
         <button
-          style={{ ...styles.btn, ...((!selected || submitting) ? styles.btnDisabled : {}) }}
+          style={{ ...styles.btn, ...(!selected ? styles.btnDisabled : {}) }}
           onClick={submit}
-          disabled={!selected || submitting}
+          disabled={!selected}
         >
-          {submitting ? 'Submitting...' : 'Submit Quiz'}
+          Submit Quiz
         </button>
       ) : (
         <button

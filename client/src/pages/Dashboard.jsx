@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { quizzes } from '../data/quizzes';
 
 const styles = {
   page: {
@@ -53,15 +53,8 @@ const styles = {
 };
 
 export default function Dashboard() {
-  const { user, authFetch } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
-  const [quizzes, setQuizzes] = useState([]);
-
-  useEffect(() => {
-    authFetch('/api/quizzes')
-      .then(r => r.json())
-      .then(data => setQuizzes(data.quizzes));
-  }, []);
 
   return (
     <div style={styles.page}>
@@ -78,7 +71,7 @@ export default function Dashboard() {
           >
             <div style={styles.cardTitle}>{q.title}</div>
             <div style={styles.cardDesc}>{q.description}</div>
-            <span style={styles.badge}>{q.question_count} questions</span>
+            <span style={styles.badge}>{q.questions.length} questions</span>
           </div>
         ))}
       </div>

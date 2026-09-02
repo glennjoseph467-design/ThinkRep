@@ -1,6 +1,18 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 
+const ATTEMPTS_KEY = 'thinkrep_attempts';
+
+function getAttempts(userId) {
+  const all = JSON.parse(localStorage.getItem(ATTEMPTS_KEY) || '[]');
+  return all.filter(a => a.user_id === userId);
+}
+
+function deleteAttemptFromStorage(id) {
+  const all = JSON.parse(localStorage.getItem(ATTEMPTS_KEY) || '[]');
+  localStorage.setItem(ATTEMPTS_KEY, JSON.stringify(all.filter(a => a.id !== id)));
+}
+
 const styles = {
   page: {
     padding: '24px',
@@ -143,26 +155,20 @@ function getBarColor(pct) {
 }
 
 export default function Portfolio() {
-  const { authFetch } = useAuth();
+  const { user } = useAuth();
   const [attempts, setAttempts] = useState([]);
 
   useEffect(() => {
-    loadAttempts();
-  }, []);
+    setAttempts(getAttempts(user.id));
+  }, [user.id]);
 
-  function loadAttempts() {
-    authFetch('/api/attempts')
-      .then(r => r.json())
-      .then(data => setAttempts(data.attempts));
-  }
-
-  async function deleteAttempt(id) {
-    await authFetch(`/api/attempts/${id}`, { method: 'DELETE' });
+  function handleDelete(id) {
+    deleteAttemptFromStorage(id);
     setAttempts(prev => prev.filter(a => a.id !== id));
   }
 
   function formatDate(dateStr) {
-    return new Date(dateStr + 'Z').toLocaleDateString('en-IN', {
+    return new Date(dateStr).toLocaleDateString('en-IN', {
       day: 'numeric', month: 'short', year: 'numeric'
     });
   }
@@ -171,7 +177,6 @@ export default function Portfolio() {
     ? Math.round(attempts.reduce((sum, a) => sum + (a.score / a.total_questions) * 100, 0) / attempts.length)
     : 0;
 
-  // Progress trend: last 3 vs first 3 (attempts are sorted newest first)
   let trendMessage = '';
   let trendColor = '#8888A0';
   let trendArrow = '';
@@ -199,7 +204,6 @@ export default function Portfolio() {
     }
   }
 
-  // Category breakdown
   const catMap = {};
   for (const a of attempts) {
     const key = a.quiz_title;
@@ -264,7 +268,7 @@ export default function Portfolio() {
               </div>
               <div style={styles.right}>
                 <div style={styles.score}>{a.score}/{a.total_questions}</div>
-                <button style={styles.deleteBtn} onClick={() => deleteAttempt(a.id)}>
+                <button style={styles.deleteBtn} onClick={() => handleDelete(a.id)}>
                   Delete
                 </button>
               </div>

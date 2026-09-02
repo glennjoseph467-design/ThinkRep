@@ -2,68 +2,65 @@ import { createContext, useContext, useState, useEffect } from 'react';
 
 const AuthContext = createContext(null);
 
-const API = '/api';
+const USERS_KEY = 'thinkrep_users';
+const SESSION_KEY = 'thinkrep_session';
+
+function getUsers() {
+  return JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
+}
+
+function saveUsers(users) {
+  localStorage.setItem(USERS_KEY, JSON.stringify(users));
+}
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
-  const [token, setToken] = useState(localStorage.getItem('token'));
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!token) {
-      setLoading(false);
-      return;
+    const session = localStorage.getItem(SESSION_KEY);
+    if (session) {
+      setUser(JSON.parse(session));
     }
-    fetch(`${API}/auth/me`, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-      .then(r => r.ok ? r.json() : Promise.reject())
-      .then(data => setUser(data.user))
-      .catch(() => { localStorage.removeItem('token'); setToken(null); })
-      .finally(() => setLoading(false));
-  }, [token]);
+    setLoading(false);
+  }, []);
 
-  async function signup(email, password, name) {
-    const res = await fetch(`${API}/auth/signup`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, name })
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error);
-    localStorage.setItem('token', data.token);
-    setToken(data.token);
-    setUser(data.user);
+  function signup(email, password, name) {
+    if (!email || !password || !name) {
+      throw new Error('Email, password, and name are required');
+    }
+    const users = getUsers();
+    if (users.find(u => u.email === email)) {
+      throw new Error('Email already registered');
+    }
+    const newUser = { id: Date.now(), email, password, name };
+    saveUsers([...users, newUser]);
+    const session = { id: newUser.id, email, name };
+    localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+    setUser(session);
   }
 
-  async function login(email, password) {
-    const res = await fetch(`${API}/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error);
-    localStorage.setItem('token', data.token);
-    setToken(data.token);
-    setUser(data.user);
+  function login(email, password) {
+    if (!email || !password) {
+      throw new Error('Email and password are required');
+    }
+    const users = getUsers();
+    const found = users.find(u => u.email === email && u.password === password);
+    if (!found) {
+      throw new Error('Invalid email or password');
+    }
+    const session = { id: found.id, email: found.email, name: found.name };
+    localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+    setUser(session);
   }
 
   function logout() {
-    localStorage.removeItem('token');
-    setToken(null);
+    localStorage.removeItem(SESSION_KEY);
     setUser(null);
   }
 
-  function authFetch(url, opts = {}) {
-    return fetch(url, {
-      ...opts,
-      headers: { ...opts.headers, Authorization: `Bearer ${token}` }
-    });
-  }
-
   return (
-    <AuthContext.Provider value={{ user, token, loading, signup, login, logout, authFetch }}>
+    <AuthContext.Provider value={{ user, loading, signup, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

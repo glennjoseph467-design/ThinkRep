@@ -7,11 +7,9 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 export default defineConfig({
   root: __dirname,
+  base: '/ThinkRep/',
   plugins: [react()],
   server: {
-    port: 5173,
-    proxy: {
-      '/api': 'http://localhost:3001'
-    }
+    port: 5173
   }
 })
