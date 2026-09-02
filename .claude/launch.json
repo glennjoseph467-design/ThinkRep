@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "thinkrep-backend",
+      "runtimeExecutable": "C:\\Users\\Glenn Joseph\\AppData\\Roaming\\fnm\\node-versions\\v22.23.2\\installation\\node.exe",
+      "runtimeArgs": ["server/index.js"],
+      "port": 3001
+    },
+    {
+      "name": "thinkrep-client",
+      "runtimeExecutable": "C:\\Users\\Glenn Joseph\\AppData\\Roaming\\fnm\\node-versions\\v22.23.2\\installation\\node.exe",
+      "runtimeArgs": ["client/node_modules/vite/bin/vite.js", "--port", "5173", "--config", "client/vite.config.js"],
+      "port": 5173
+    }
+  ]
+}
